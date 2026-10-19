@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NowPlace — Registre seu aqui e agora</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="logo">🌍</span>
+      <h1>NowPlace</h1>
+    </div>
+    <div id="userBadge" class="user-badge" hidden>
+      <span id="userNameLabel"></span>
+      <button id="btnLogout" class="btn btn-ghost" type="button">Sair</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ================= LOGIN ================= -->
+    <section id="screen-login" class="screen active">
+      <div class="login-card">
+        <h2>Bem-vindo(a) ao NowPlace</h2>
+        <p class="muted">
+          Onde você está agora? Registre seu momento e descubra o que
+          acontece ao seu redor.
+        </p>
+        <label for="inputName" class="field-label">Como devemos te chamar?</label>
+        <input
+          id="inputName"
+          class="input"
+          type="text"
+          maxlength="40"
+          placeholder="Seu nome"
+          autocomplete="off"
+        />
+        <button id="btnEnter" class="btn btn-primary" type="button">Entrar</button>
+        <p id="loginMsg" class="msg" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- ================= APP ================= -->
+    <section id="screen-app" class="screen">
+
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-target="view-create" role="tab">
+          📸 Criar Now
+        </button>
+        <button class="tab" data-target="view-feed" role="tab">
+          🗺️ Nows Próximos
+        </button>
+      </nav>
+
+      <!-- ---------- CRIAR ---------- -->
+      <div id="view-create" class="view active">
+
+        <div class="create-grid">
+
+          <!-- Câmera -->
+          <div class="camera-card">
+            <div class="camera-stage">
+              <video id="video" autoplay playsinline muted></video>
+              <div id="cameraOverlay" class="camera-overlay">
+                <p id="cameraHint">Clique em <strong>Iniciar Câmera</strong> para começar.</p>
+              </div>
+              <span id="captureBadge" class="capture-badge" hidden></span>
+            </div>
+
+            <div class="camera-actions">
+              <button id="btnStartCam" class="btn btn-primary" type="button">🎥 Iniciar Câmera</button>
+              <button id="btnCapture" class="btn btn-accent" type="button" disabled>📷 Capturar</button>
+              <button id="btnStopCam" class="btn btn-danger" type="button" disabled>⏹ Parar</button>
+            </div>
+
+            <p id="cameraMsg" class="msg" role="status" aria-live="polite"></p>
+          </div>
+
+          <!-- Previews -->
+          <div class="preview-card">
+            <h3>Pré-visualização</h3>
+            <div class="previews">
+              <figure class="preview">
+                <img id="previewEnv" alt="Foto do ambiente" />
+                <figcaption>🏞️ Ambiente</figcaption>
+              </figure>
+              <figure class="preview">
+                <img id="previewSelfie" alt="Selfie" />
+                <figcaption>🤳 Selfie</figcaption>
+              </figure>
+            </div>
+
+            <label for="inputDesc" class="field-label">O que você está fazendo agora?</label>
+            <textarea
+              id="inputDesc"
+              class="textarea"
+              maxlength="200"
+              rows="3"
+              placeholder="Ex.: Tomando um café na padaria da esquina ☕"
+            ></textarea>
+
+            <div class="location-box">
+              <span class="loc-icon">📍</span>
+              <span id="locationLabel" class="loc-text">Localização será obtida ao publicar.</span>
+            </div>
+
+            <button id="btnPublish" class="btn btn-primary btn-block" type="button" disabled>
+              🚀 Publicar Now
+            </button>
+            <p id="publishMsg" class="msg" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- FEED ---------- -->
+      <div id="view-feed" class="view">
+
+        <div class="feed-toolbar">
+          <label class="field-inline">
+            Raio de busca:
+            <select id="selectRadius" class="input-inline">
+              <option value="1">1 km</option>
+              <option value="5" selected>5 km</option>
+              <option value="10">10 km</option>
+              <option value="25">25 km</option>
+              <option value="50">50 km</option>
+              <option value="200">200 km</option>
+            </select>
+          </label>
+          <button id="btnRefreshFeed" class="btn" type="button">🔄 Atualizar</button>
+        </div>
+
+        <div id="feedLocked" class="feed-locked" hidden>
+          <div class="lock-icon">🔒</div>
+          <h3>Feed bloqueado</h3>
+          <p>
+            Para visualizar os Nows próximos, você precisa publicar o seu
+            próprio Now <strong>nas últimas 24 horas</strong>.
+          </p>
+          <button class="btn btn-primary" data-target="view-create" type="button">
+            Criar meu Now agora
+          </button>
+        </div>
+
+        <p id="feedMsg" class="msg" role="status" aria-live="polite"></p>
+        <div id="feedList" class="feed-list"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>NowPlace • Projeto Integrador SA2 — Programação Front-End</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
