@@ -35,42 +35,42 @@ const $ = (id) => document.getElementById(id);
 
 const el = {
   // login
-  screenLogin:  $('screen-login'),
-  screenApp:    $('screen-app'),
-  inputName:    $('inputName'),
-  btnEnter:     $('btnEnter'),
-  loginMsg:     $('loginMsg'),
-  userBadge:    $('userBadge'),
-  userNameLabel:$('userNameLabel'),
-  btnLogout:    $('btnLogout'),
+  screenLogin:   $('screen-login'),
+  screenApp:     $('screen-app'),
+  inputName:     $('inputName'),
+  btnEnter:      $('btnEnter'),
+  loginMsg:      $('loginMsg'),
+  userBadge:     $('userBadge'),
+  userNameLabel: $('userNameLabel'),
+  btnLogout:     $('btnLogout'),
 
   // tabs
-  tabs:         document.querySelectorAll('.tab'),
+  tabs: document.querySelectorAll('.tab'),
 
   // câmera
-  video:        $('video'),
-  cameraOverlay:$('cameraOverlay'),
-  cameraHint:   $('cameraHint'),
-  captureBadge: $('captureBadge'),
-  btnStartCam:  $('btnStartCam'),
-  btnCapture:   $('btnCapture'),
-  btnStopCam:   $('btnStopCam'),
-  cameraMsg:    $('cameraMsg'),
+  video:         $('video'),
+  cameraOverlay: $('cameraOverlay'),
+  cameraHint:    $('cameraHint'),
+  captureBadge:  $('captureBadge'),
+  btnStartCam:   $('btnStartCam'),
+  btnCapture:    $('btnCapture'),
+  btnStopCam:    $('btnStopCam'),
+  cameraMsg:     $('cameraMsg'),
 
   // previews
-  previewEnv:   $('previewEnv'),
-  previewSelfie:$('previewSelfie'),
-  inputDesc:    $('inputDesc'),
-  locationLabel:$('locationLabel'),
-  btnPublish:   $('btnPublish'),
-  publishMsg:   $('publishMsg'),
+  previewEnv:    $('previewEnv'),
+  previewSelfie: $('previewSelfie'),
+  inputDesc:     $('inputDesc'),
+  locationLabel: $('locationLabel'),
+  btnPublish:    $('btnPublish'),
+  publishMsg:    $('publishMsg'),
 
   // feed
-  selectRadius: $('selectRadius'),
+  selectRadius:   $('selectRadius'),
   btnRefreshFeed: $('btnRefreshFeed'),
-  feedLocked:   $('feedLocked'),
-  feedList:     $('feedList'),
-  feedMsg:      $('feedMsg')
+  feedLocked:     $('feedLocked'),
+  feedList:       $('feedList'),
+  feedMsg:        $('feedMsg')
 };
 
 /* =========================================================================
@@ -92,7 +92,9 @@ function formatarTempo(ts) {
   if (diff < 60)    return 'agora';
   if (diff < 3600)  return `há ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `há ${Math.floor(diff / 3600)} h`;
-  return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return new Date(ts).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+  });
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -177,8 +179,6 @@ function iniciarApp() {
   el.screenApp.classList.add('active');
   el.userBadge.hidden = false;
   el.userNameLabel.textContent = `Olá, ${state.user.nome}`;
-
-  // Ao entrar, checa a regra das 24h
   atualizarFeed();
 }
 
@@ -215,20 +215,37 @@ el.tabs.forEach(tab => {
    ========================================================================= */
 
 async function iniciarCamera(facingMode) {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    msg(el.cameraMsg, 'Navegador sem suporte a getUserMedia. Use Chrome/Firefox atualizado em HTTPS ou localhost.', 'erro');
-    return;
-  }
-
-  // Encerra stream anterior antes de abrir outro (evita conflito)
-  pararCamera(silencioso = true);
-
   try {
+    /* 1) Navegador tem suporte? */
+    if (!navigator.mediaDevices?.getUserMedia) {
+      msg(el.cameraMsg,
+        'Navegador sem suporte a getUserMedia. Use Chrome/Firefox atualizado.',
+        'erro');
+      return;
+    }
+
+    /* 2) Contexto seguro? (getUserMedia exige HTTPS ou localhost) */
+    const seguro =
+      location.protocol === 'https:' ||
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1';
+
+    if (!seguro) {
+      msg(el.cameraMsg,
+        `A câmera só funciona em HTTPS ou localhost. Você está em: ${location.origin}`,
+        'erro');
+      return;
+    }
+
+    /* 3) Encerra stream anterior antes de abrir outro */
+    pararCamera(true);
+
+    /* 4) Pede permissão e abre a câmera */
     msg(el.cameraMsg, 'Solicitando permissão da câmera…');
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: facingMode },
-        width: { ideal: 1280 },
+        width:  { ideal: 1280 },
         height: { ideal: 960 }
       },
       audio: false
@@ -244,6 +261,7 @@ async function iniciarCamera(facingMode) {
     el.cameraOverlay.classList.add('oculto');
 
     atualizarBotoesCamera();
+
     if (state.stage === 'selfie') {
       el.captureBadge.hidden = false;
       el.captureBadge.textContent = '🤳 Capturando SELFIE';
@@ -253,21 +271,25 @@ async function iniciarCamera(facingMode) {
       el.captureBadge.textContent = '🏞️ Capturando AMBIENTE';
       msg(el.cameraMsg, 'Aponte a câmera para o ambiente e clique em Capturar.', 'ok');
     }
+
   } catch (err) {
+    console.error('❌ iniciarCamera falhou:', err);
     tratarErroCamera(err);
   }
 }
 
 function tratarErroCamera(err) {
   const mensagens = {
-    NotAllowedError:  'Permissão da câmera negada. Libere o acesso no ícone do cadeado ao lado do endereço.',
-    SecurityError:    'Acesso à câmera bloqueado pelo navegador. Use HTTPS ou localhost.',
-    NotFoundError:    'Nenhuma câmera encontrada neste dispositivo.',
+    NotAllowedError:      'Permissão da câmera negada. Libere o acesso no ícone do cadeado ao lado do endereço.',
+    SecurityError:        'Acesso à câmera bloqueado pelo navegador. Use HTTPS ou localhost.',
+    NotFoundError:        'Nenhuma câmera encontrada neste dispositivo.',
     OverconstrainedError: 'Esta câmera não suporta o modo solicitado (ambiente/selfie).',
-    NotReadableError: 'A câmera está em uso por outro aplicativo. Feche-o e tente novamente.',
-    AbortError:       'Acesso à câmera foi interrompido inesperadamente.'
+    NotReadableError:     'A câmera está em uso por outro aplicativo. Feche-o e tente novamente.',
+    AbortError:           'Acesso à câmera foi interrompido inesperadamente.'
   };
-  msg(el.cameraMsg, mensagens[err.name] || `Não foi possível acessar a câmera (${err.name}).`, 'erro');
+  msg(el.cameraMsg,
+    mensagens[err.name] || `Não foi possível acessar a câmera (${err.name}).`,
+    'erro');
 }
 
 function pararCamera(silencioso = false) {
@@ -293,14 +315,14 @@ function atualizarBotoesCamera() {
   el.btnStartCam.disabled = ligada && state.stage !== null;
   el.btnCapture.disabled = !ligada;
 
-  // Fluxo sequencial: ambiente → selfie
   if (!ligada) {
-    el.btnStartCam.textContent = state.photos.env ? '🤳 Iniciar Câmera (Selfie)' : '🎥 Iniciar Câmera';
+    el.btnStartCam.textContent = state.photos.env
+      ? '🤳 Iniciar Câmera (Selfie)'
+      : '🎥 Iniciar Câmera';
   } else {
     el.btnStartCam.textContent = '🎥 Câmera ativa';
   }
 
-  // Publicar só fica disponível com as duas fotos
   const temFotos = state.photos.env && state.photos.selfie;
   const temDesc  = el.inputDesc.value.trim().length > 0;
   el.btnPublish.disabled = !(temFotos && temDesc && state.location);
@@ -312,11 +334,12 @@ function atualizarBotoesCamera() {
 
 function capturarFrame() {
   if (!state.stream || el.video.readyState < 2 || el.video.videoWidth === 0) {
-    msg(el.cameraMsg, 'A câmera ainda está iniciando. Aguarde um instante e tente novamente.', 'erro');
+    msg(el.cameraMsg,
+      'A câmera ainda está iniciando. Aguarde um instante e tente novamente.',
+      'erro');
     return null;
   }
 
-  // Redimensiona para caber confortavelmente no localStorage
   const MAX = 720;
   const vw = el.video.videoWidth;
   const vh = el.video.videoHeight;
@@ -329,7 +352,7 @@ function capturarFrame() {
   canvas.height = h;
   const ctx = canvas.getContext('2d');
 
-  // Selfie espelhada (natural, como um espelho)
+  // Selfie espelhada (mais natural para o usuário)
   if (state.facingMode === 'user') {
     ctx.translate(w, 0);
     ctx.scale(-1, 1);
@@ -349,7 +372,6 @@ async function capturar() {
     el.previewEnv.classList.add('visivel');
     state.stage = 'selfie';
 
-    // Reinicia stream com câmera frontal para a selfie
     pararCamera(true);
     msg(el.cameraMsg, 'Ambiente capturado! Agora a selfie…', 'ok');
     await iniciarCamera('user');
@@ -360,10 +382,9 @@ async function capturar() {
     el.previewSelfie.classList.add('visivel');
     state.stage = null;
 
-    pararCamera(); // não precisamos mais da câmera
+    pararCamera();
     msg(el.cameraMsg, 'Selfie capturada! Finalize sua publicação.', 'ok');
 
-    // Dispara obtenção de localização
     obterLocalizacao();
   }
 
@@ -424,12 +445,14 @@ async function reverseGeocode(lat, lon) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    // Nominatim: usa display_name ou monta a partir de address
     if (data.display_name) return data.display_name;
 
     const a = data.address || {};
-    const partes = [a.road, a.suburb, a.city || a.town || a.village, a.state].filter(Boolean);
-    return partes.length ? partes.join(', ') : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+    const partes = [a.road, a.suburb, a.city || a.town || a.village, a.state]
+      .filter(Boolean);
+    return partes.length
+      ? partes.join(', ')
+      : `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 
   } catch (e) {
     console.warn('Reverse geocode falhou:', e);
@@ -453,7 +476,9 @@ function publicar() {
     return;
   }
   if (!state.location) {
-    msg(el.publishMsg, 'Aguardando localização. Toque em "Atualizar" ao lado da localização.', 'erro');
+    msg(el.publishMsg,
+      'Aguardando localização. Verifique a permissão de GPS e tente novamente.',
+      'erro');
     return;
   }
 
@@ -474,14 +499,15 @@ function publicar() {
   nows.push(now);
 
   if (!salvarNows(nows)) {
-    msg(el.publishMsg, 'Não foi possível salvar (memória cheia). Tente excluir Nows antigos.', 'erro');
+    msg(el.publishMsg,
+      'Não foi possível salvar (memória cheia). Tente excluir Nows antigos.',
+      'erro');
     return;
   }
 
   msg(el.publishMsg, 'Now publicado com sucesso! 🎉', 'ok');
   resetFormulario();
 
-  // Vai para o feed
   setTimeout(() => irParaView('view-feed'), 700);
 }
 
@@ -509,7 +535,6 @@ async function atualizarFeed() {
   if (!state.user) return;
   msg(el.feedMsg, '');
 
-  // RN05 — regra das 24h
   const recente = publicacaoRecente24h(state.user.id);
   if (!recente) {
     el.feedLocked.hidden = false;
@@ -518,11 +543,9 @@ async function atualizarFeed() {
   }
   el.feedLocked.hidden = true;
 
-  // RN06 — proximidade: usa última localização conhecida ou a do próprio Now
   let refLat = recente.lat;
   let refLon = recente.lon;
 
-  // Tenta pegar a posição atual (fresca) do dispositivo
   if (navigator.geolocation) {
     try {
       const pos = await new Promise((resolve, reject) => {
@@ -541,7 +564,7 @@ async function atualizarFeed() {
   const nows = carregarNows();
 
   const proximos = nows
-    .filter(n => n.userId !== state.user.id) // exclui os próprios Nows
+    .filter(n => n.userId !== state.user.id)
     .map(n => ({ ...n, distancia: haversineKm(refLat, refLon, n.lat, n.lon) }))
     .filter(n => n.distancia <= raioKm)
     .sort((a, b) => b.createdAt - a.createdAt);
@@ -577,11 +600,10 @@ function criarCard(now) {
   card.className = 'now-card';
   card.dataset.main = now.mainPhoto || 'env';
 
-  // Stack de fotos
   const stack = document.createElement('div');
   stack.className = 'photo-stack';
 
-  const imgEnv = criarImg('env', now.photos.env, 'Foto do ambiente');
+  const imgEnv    = criarImg('env',    now.photos.env,    'Foto do ambiente');
   const imgSelfie = criarImg('selfie', now.photos.selfie, 'Selfie');
 
   const hint = document.createElement('span');
@@ -591,7 +613,6 @@ function criarCard(now) {
   stack.append(imgEnv, imgSelfie, hint);
   card.append(stack);
 
-  // Info
   const info = document.createElement('div');
   info.className = 'card-info';
   info.innerHTML = `
@@ -605,10 +626,7 @@ function criarCard(now) {
   `;
   card.append(info);
 
-  // Aplica classes de posição
   atualizarPosicoes(card);
-
-  // Configura drag and drop
   configurarDragDrop(card, now);
 
   return card;
@@ -624,7 +642,6 @@ function criarImg(role, src, alt) {
   return img;
 }
 
-/** Atualiza as classes conforme card.dataset.main. */
 function atualizarPosicoes(card) {
   const main = card.dataset.main;
   card.querySelectorAll('.photo').forEach(img => {
@@ -634,11 +651,6 @@ function atualizarPosicoes(card) {
   });
 }
 
-/**
- * RN07 — Drag and Drop entre as duas fotos.
- * Ao soltar uma foto sobre a outra, as posições (principal/secundária) trocam
- * e o novo estado é persistido no Storage.
- */
 function configurarDragDrop(card, now) {
   let draggedRole = null;
 
@@ -671,11 +683,9 @@ function configurarDragDrop(card, now) {
       const origem = e.dataTransfer.getData('text/plain') || draggedRole;
       if (!origem || origem === img.dataset.role) return;
 
-      // Troca o principal
       card.dataset.main = card.dataset.main === 'env' ? 'selfie' : 'env';
       atualizarPosicoes(card);
 
-      // Persiste no storage
       const nows = carregarNows();
       const alvo = nows.find(n => n.id === now.id);
       if (alvo) {
@@ -702,12 +712,13 @@ function escapeHTML(str = '') {
 
 // Login
 el.btnEnter.addEventListener('click', entrar);
-el.inputName.addEventListener('keydown', e => { if (e.key === 'Enter') entrar(); });
+el.inputName.addEventListener('keydown', e => {
+  if (e.key === 'Enter') entrar();
+});
 el.btnLogout.addEventListener('click', sair);
 
 // Câmera
 el.btnStartCam.addEventListener('click', () => {
-  // Se já capturou ambiente, o próximo passo é selfie
   if (state.photos.env && !state.photos.selfie) {
     state.stage = 'selfie';
     iniciarCamera('user');
@@ -716,7 +727,9 @@ el.btnStartCam.addEventListener('click', () => {
     iniciarCamera('environment');
   }
 });
+
 el.btnCapture.addEventListener('click', capturar);
+
 el.btnStopCam.addEventListener('click', () => {
   pararCamera();
   msg(el.cameraMsg, 'Câmera desligada e hardware liberado.', '');
@@ -730,7 +743,7 @@ el.btnPublish.addEventListener('click', publicar);
 el.btnRefreshFeed.addEventListener('click', atualizarFeed);
 el.selectRadius.addEventListener('change', atualizarFeed);
 
-// Botões com [data-target] dentro da tela de login bloqueado
+// Botões [data-target] (ex.: dentro do feed bloqueado)
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-target]');
   if (btn && btn.classList.contains('btn')) {
@@ -738,7 +751,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Libera câmera ao sair da página
+// Libera a câmera ao sair da página
 window.addEventListener('beforeunload', () => {
   if (state.stream) state.stream.getTracks().forEach(t => t.stop());
 });
